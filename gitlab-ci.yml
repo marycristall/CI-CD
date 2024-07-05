@@ -1,0 +1,58 @@
+default:
+  tags: [build_tag, style_tag, test_tag, deploy_tag]
+
+stages:
+  - build
+  - style
+  - test
+  - deploy
+
+job_build:
+  stage: build
+  tags:
+    - build_tag
+  script:
+  - cd src/cat
+  - make
+  - cd ../grep
+  - make
+  artifacts:
+    paths:
+    - src/cat/
+    - src/grep/
+    expire_in: 30 day
+
+job_style:
+  stage: style
+  tags:
+    - style_tag
+  script:
+  - cd src/cat
+  - clang-format -n -Werror *.c *.h
+  - cd ../grep
+  - clang-format -n -Werror *.c *.h
+
+job_test:
+  stage: test
+  when: on_success
+  tags:
+    - test_tag
+  script:
+  - cd src/cat
+  - make
+  - echo "Beginning tests for cat"
+  - make testing
+  - cd ../grep
+  - make
+  - echo "Beginning tests for grep"
+  - sh s21_test_grep.sh
+
+deploy:
+  stage: deploy
+  when: manual
+  tags:
+    - deploy_tag
+  script:
+    - sh ./src/script_for_deploy.sh
+  after_script:
+    - ./src/notifications_telegram.sh CI
